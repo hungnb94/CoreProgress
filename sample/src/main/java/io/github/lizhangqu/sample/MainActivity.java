@@ -28,7 +28,10 @@ import java.io.File;
 import java.io.IOException;
 
 import io.github.lizhangqu.coreprogress.ProgressHelper;
+import io.github.lizhangqu.coreprogress.ProgressListener;
 import io.github.lizhangqu.coreprogress.ProgressUIListener;
+import io.github.lizhangqu.sample.remote.ApiService;
+import io.github.lizhangqu.sample.remote.ApiUtils;
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.MultipartBody;
@@ -42,6 +45,7 @@ import okio.BufferedSource;
 import okio.Okio;
 
 public class MainActivity extends AppCompatActivity {
+    private static final String TAG = "MainActivity";
     private Button upload, download;
     private TextView uploadInfo, downloadInfo;
     private ProgressBar uploadProgress, downloadProgeress;
@@ -65,7 +69,7 @@ public class MainActivity extends AppCompatActivity {
         upload.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                upload();
+                uploadWithInterceptor();
             }
         });
         download.setOnClickListener(new View.OnClickListener() {
@@ -141,8 +145,40 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    private void uploadWithInterceptor() {
+        uploadInfo.setText("start upload");
+
+        ProgressListener uploadListener = new ProgressUIListener() {
+            @Override
+            public void onUIProgressChanged(long numBytes, long totalBytes, float percent, float speed) {
+                uploadProgress.setProgress((int) (100 * percent));
+                uploadInfo.setText("numBytes:" + numBytes + " bytes" + "\ntotalBytes:" + totalBytes + " bytes" + "\npercent:" + percent * 100 + " %" + "\nspeed:" + speed * 1000 / 1024 / 1024 + "  MB/秒");
+            }
+        };
+        String currentApkPath = getApplicationContext().getPackageResourcePath();
+        File apkFile = new File(currentApkPath);
+        String url = "https://v2.convertapi.com/upload/";
+        RequestBody requestFile = RequestBody.create(null, apkFile);
+        MultipartBody.Part body =
+                MultipartBody.Part.createFormData("file", apkFile.getName(), requestFile);
+
+        ApiService uploadService = ApiUtils.getUploadService(url, uploadListener);
+        uploadService.uploadFile(url, body).enqueue(new retrofit2.Callback<ResponseBody>() {
+            @Override
+            public void onResponse(retrofit2.Call<ResponseBody> call, retrofit2.Response<ResponseBody> response) {
+                Log.e("TAG", "=============onResponse===============");
+                Log.e("TAG", "response headers:" + response.headers());
+            }
+
+            @Override
+            public void onFailure(retrofit2.Call<ResponseBody> call, Throwable t) {
+                Log.e("TAG", "=============onFailure===============", t);
+            }
+        });
+    }
+
     private void download() {
-        uploadInfo.setText("start download");
+        downloadInfo.setText("start download");
         String url = "https://speed.hetzner.de/100MB.bin";
 
         OkHttpClient okHttpClient = new OkHttpClient();

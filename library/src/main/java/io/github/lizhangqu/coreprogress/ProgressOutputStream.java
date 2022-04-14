@@ -41,11 +41,7 @@ class ProgressOutputStream extends OutputStream {
             this.listener.onProgressChanged(-1, -1, -1);
             return;
         }
-        if (len < b.length) {
-            this.totalWritten += len;
-        } else {
-            this.totalWritten += b.length;
-        }
+        this.totalWritten += Math.min(len, b.length);
         this.listener.onProgressChanged(this.totalWritten, this.total, (this.totalWritten * 1.0F) / this.total);
     }
 
